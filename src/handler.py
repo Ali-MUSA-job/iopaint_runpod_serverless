@@ -8,14 +8,15 @@ import sys
 
 sys.path.append("/app/iopaint_project")
 
-from iopaint_project.iopaint.schema import InpaintRequest
-from iopaint_project.iopaint import model_manager
 from iopaint_project.iopaint.model import models
 from iopaint_project.iopaint.model.lama import LaMa, AnimeLaMa
 
 # Inject support manually
 models["lama"] = LaMa
 models["anime-lama"] = AnimeLaMa
+
+from iopaint_project.iopaint.schema import InpaintRequest
+from iopaint_project.iopaint import model_manager
 
 # Initialize model manager globally on startup with default model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
