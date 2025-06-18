@@ -1,6 +1,6 @@
 # Core
 runpod
-Pillow
+Pillow==9.5.0
 numpy
 torch==2.3.0
 torchvision==0.18.0
@@ -9,16 +9,33 @@ torchvision==0.18.0
 # IOPaint dependencies
 opencv-python
 tqdm
-transformers==4.30.2
-diffusers>=0.21.0
+transformers>=4.39.1
+diffusers==0.27.2
 scipy
 matplotlib
 omegaconf
 pyyaml
-huggingface_hub==0.22.2
+huggingface_hub==0.25.2
+accelerate
+peft==0.7.1
+safetensors
+controlnet-aux==0.0.3
 
-# Optional if needed by IOPaint
-requests
+# Web / API / Serving dependencies
+fastapi==0.108.0
+uvicorn
+python-multipart
+python-socketio==5.7.2
+typer
+typer-config==1.4.0
+
+# Utilities / Optional but recommended for IOPaint
+pydantic>=2.5.2
+rich
 loguru
-pydantic>=2.0
+yacs
+piexif==1.1.3
+easydict
+gradio==4.21.0
 einops
+requests
