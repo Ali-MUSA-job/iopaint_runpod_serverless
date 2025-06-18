@@ -19,3 +19,5 @@ huggingface_hub==0.16.4
 
 # Optional if needed by IOPaint
 requests
+loguru
+pydantic>=2.0
