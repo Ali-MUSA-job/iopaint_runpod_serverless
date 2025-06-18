@@ -1,0 +1,21 @@
+# Core
+runpod
+Pillow
+numpy
+torch==2.3.0
+torchvision==0.18.0
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# IOPaint dependencies
+opencv-python
+tqdm
+transformers==4.30.2
+diffusers==0.19.3
+scipy
+matplotlib
+omegaconf
+pyyaml
+huggingface_hub==0.16.4
+
+# Optional if needed by IOPaint
+requests
