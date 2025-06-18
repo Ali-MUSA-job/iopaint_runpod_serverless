@@ -2,22 +2,22 @@
 runpod
 Pillow
 numpy
---extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.3.0
 torchvision==0.18.0
+--extra-index-url https://download.pytorch.org/whl/cu121
 
 # IOPaint dependencies
 opencv-python
 tqdm
-transformers>=4.36.2
-diffusers==0.25.1
+transformers==4.30.2
+diffusers==0.14.0   
 scipy
 matplotlib
 omegaconf
 pyyaml
 huggingface_hub==0.22.2
 
-# Optional / utilities
+# Optional if needed by IOPaint
 requests
 loguru
 pydantic>=2.0
