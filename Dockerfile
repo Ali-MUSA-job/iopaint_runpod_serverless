@@ -19,7 +19,7 @@ COPY builder/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --- Clone IOPaint ---
-RUN git clone https://github.com/Sanster/IOPaint.git /app/iopaint
+RUN git clone https://github.com/Sanster/IOPaint.git /app/iopaint_project
 
 # --- Copy handler ---
 COPY src/handler.py .

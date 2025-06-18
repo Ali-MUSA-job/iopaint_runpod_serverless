@@ -4,9 +4,12 @@ from io import BytesIO
 from PIL import Image
 import torch
 import numpy as np
+import sys
 
-from iopaint.iopaint.schema import InpaintRequest
-from iopaint.iopaint import model_manager
+sys.path.append("/app/iopaint_project")
+
+from iopaint_project.iopaint.schema import InpaintRequest
+from iopaint_project.iopaint import model_manager
 
 # Initialize model manager globally on startup with default model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
