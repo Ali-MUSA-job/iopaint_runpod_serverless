@@ -15,7 +15,7 @@ scipy
 matplotlib
 omegaconf
 pyyaml
-huggingface_hub==0.16.4
+huggingface_hub==0.22.2
 
 # Optional if needed by IOPaint
 requests
