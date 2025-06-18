@@ -10,7 +10,7 @@ torchvision==0.18.0
 opencv-python
 tqdm
 transformers==4.30.2
-diffusers==0.25.1
+diffusers==0.20.2
 scipy
 matplotlib
 omegaconf
