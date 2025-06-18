@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # --- Clone IOPaint ---
 RUN git clone https://github.com/Sanster/IOPaint.git /app/iopaint_project
 
-# --- Download Lama model weights ---
-RUN python3 -m iopaint_project.download --model lama
+# Download Lama model weights by calling its download method
+RUN python3 -c "from iopaint_project.iopaint.model.lama import LaMa; LaMa.download()"
 
 # --- Copy handler ---
 COPY src/handler.py .
