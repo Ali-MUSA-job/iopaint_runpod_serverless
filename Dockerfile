@@ -17,21 +17,6 @@ RUN python3 -m pip install --upgrade pip setuptools wheel && \
 # Copy handler code
 COPY src/handler.py .
 
-# Clone IOPaint repo
-RUN git clone https://github.com/Sanster/IOPaint.git /app/iopaint_project
-
-# Set PYTHONPATH for imports
-ENV PYTHONPATH=/app
-
-# Test network access with requests
-RUN python3 -c "import requests; print('Network OK:', requests.get('https://github.com').status_code)"
-
-# Manually download LaMa model to cache to avoid python download errors
-RUN mkdir -p /root/.cache/iopaint && \
-    wget -O /root/.cache/iopaint/big-lama.pt https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt
-
-# Optional: download Anime LaMa model too if needed
-RUN wget -O /root/.cache/iopaint/anime-manga-big-lama.pt https://github.com/Sanster/models/releases/download/AnimeMangaInpainting/anime-manga-big-lama.pt || true
 
 # Entrypoint
 CMD ["python3", "-u", "handler.py"]
