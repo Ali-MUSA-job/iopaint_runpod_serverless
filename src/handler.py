@@ -1,5 +1,10 @@
 import sys
 import os
+import base64
+from io import BytesIO
+from PIL import Image
+import torch
+import numpy as np
 
 # Ensure proper Python path
 sys.path.insert(0, '/app')
@@ -12,7 +17,6 @@ except ImportError as e:
     print(f"❌ RunPod import failed: {e}")
     print(f"Python path: {sys.path}")
     print(f"Installed packages location: {sys.executable}")
-    # Try alternative import locations
     try:
         sys.path.append('/usr/local/lib/python3.10/dist-packages')
         import runpod
@@ -20,24 +24,15 @@ except ImportError as e:
     except ImportError:
         raise ImportError("Could not import runpod from any location")
 
-import base64
-from io import BytesIO
-from PIL import Image
-import torch
-import numpy as np
-
 from iopaint.model.lama import LaMa
 from iopaint.schema import InpaintRequest
 
-# Initialize models globally on startup
+# Initialize models globally
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Create model instances directly
 models = {
     "lama": LaMa(device=device)
 }
-
-current_model_name = "lama"  # default
+current_model_name = "lama"
 current_model = models[current_model_name]
 
 print(f"✅ Initialized models: {list(models.keys())}")
@@ -60,7 +55,6 @@ def encode_base64_image(image_np):
 # Helper: switch model if needed
 def switch_model(requested_model):
     global current_model, current_model_name
-
     if requested_model != current_model_name:
         if requested_model in models:
             current_model = models[requested_model]
@@ -86,9 +80,21 @@ def handler(job):
 
         # Decode image and mask
         image = decode_base64_image(image_b64)
-        mask = decode_base64_image(mask_b64).convert("L")  # mask: 1 channel
+        mask = decode_base64_image(mask_b64).convert("L")  # single channel
+
         image_np = np.array(image)
-        mask_np = np.array(mask)[..., None]  # shape: [H, W, 1]
+        mask_np = np.array(mask)
+
+        # Ensure mask shape is (H, W, 1)
+        if mask_np.ndim == 2:
+            mask_np = mask_np[..., None]
+        elif mask_np.ndim > 3:
+            mask_np = mask_np.squeeze()
+            if mask_np.ndim == 2:
+                mask_np = mask_np[..., None]
+
+        print("✅ Image shape:", image_np.shape)
+        print("✅ Mask shape:", mask_np.shape)
 
         # Prepare config
         config = InpaintRequest(
