@@ -30,8 +30,8 @@ jobs:
           
     
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag alimusavm/iopaint-for-runpod-serverless:v3
+      run: docker build . --file Dockerfile --tag alimusavm/iopaint-for-runpod-serverless:v3.1.0
 
     - name: Push the Docker image
-      run: docker push alimusavm/iopaint-for-runpod-serverless:v3
+      run: docker push alimusavm/iopaint-for-runpod-serverless:v3.1.0
       
