@@ -4,12 +4,9 @@ from io import BytesIO
 from PIL import Image
 import torch
 import numpy as np
-import sys
 
-sys.path.append("/app/iopaint_project")
-
-from iopaint_project.iopaint.model.lama import LaMa, AnimeLaMa
-from iopaint_project.iopaint.schema import InpaintRequest
+from iopaint.model.lama import LaMa, AnimeLaMa
+from iopaint.schema import InpaintRequest
 
 # Initialize models globally on startup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
