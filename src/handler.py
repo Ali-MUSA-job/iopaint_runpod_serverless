@@ -26,7 +26,7 @@ from PIL import Image
 import torch
 import numpy as np
 
-from iopaint.model.lama import LaMa, AnimeLaMa
+from iopaint.model.lama import LaMa
 from iopaint.schema import InpaintRequest
 
 # Initialize models globally on startup
@@ -34,8 +34,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Create model instances directly
 models = {
-    "lama": LaMa(device=device),
-    "anime-lama": AnimeLaMa(device=device)
+    "lama": LaMa(device=device)
 }
 
 current_model_name = "lama"  # default
