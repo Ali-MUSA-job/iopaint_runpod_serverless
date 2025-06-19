@@ -12,6 +12,7 @@ sys.path.insert(0, '/usr/local/lib/python3.10/site-packages')
 
 try:
     import runpod
+
     print("✅ RunPod imported successfully")
 except ImportError as e:
     print(f"❌ RunPod import failed: {e}")
@@ -20,6 +21,7 @@ except ImportError as e:
     try:
         sys.path.append('/usr/local/lib/python3.10/dist-packages')
         import runpod
+
         print("✅ RunPod imported from dist-packages")
     except ImportError:
         raise ImportError("Could not import runpod from any location")
@@ -64,6 +66,38 @@ def switch_model(requested_model):
             raise ValueError(f"Model '{requested_model}' not available. Available models: {list(models.keys())}")
 
 
+# Helper: normalize mask dimensions
+def normalize_mask(mask_np):
+    """
+    Normalize mask to proper shape (H, W) or (H, W, 1)
+    """
+    print(f"🔍 Original mask shape: {mask_np.shape}")
+
+    # Remove all singleton dimensions first
+    mask_np = np.squeeze(mask_np)
+    print(f"🔍 After squeeze: {mask_np.shape}")
+
+    # Ensure we have at least 2D
+    if mask_np.ndim == 1:
+        # This shouldn't happen with proper image masks, but handle it
+        raise ValueError(f"Invalid mask shape after processing: {mask_np.shape}")
+    elif mask_np.ndim == 2:
+        # Perfect - (H, W)
+        print(f"✅ Final mask shape: {mask_np.shape}")
+        return mask_np
+    elif mask_np.ndim == 3:
+        # If still 3D after squeeze, take the first channel
+        if mask_np.shape[2] == 1:
+            mask_np = mask_np[:, :, 0]
+        else:
+            # Take first channel if multiple channels
+            mask_np = mask_np[:, :, 0]
+        print(f"✅ Final mask shape: {mask_np.shape}")
+        return mask_np
+    else:
+        raise ValueError(f"Unable to normalize mask with shape: {mask_np.shape}")
+
+
 # Main handler
 def handler(job):
     try:
@@ -85,16 +119,19 @@ def handler(job):
         image_np = np.array(image)
         mask_np = np.array(mask)
 
-        # Ensure mask shape is (H, W, 1)
-        if mask_np.ndim == 2:
-            mask_np = mask_np[..., None]
-        elif mask_np.ndim > 3:
-            mask_np = mask_np.squeeze()
-            if mask_np.ndim == 2:
-                mask_np = mask_np[..., None]
+        print(f"✅ Original image shape: {image_np.shape}")
+        print(f"✅ Original mask shape: {mask_np.shape}")
 
-        print("✅ Image shape:", image_np.shape)
-        print("✅ Mask shape:", mask_np.shape)
+        # Normalize mask dimensions
+        mask_np = normalize_mask(mask_np)
+
+        # Verify shapes are compatible
+        if image_np.shape[:2] != mask_np.shape[:2]:
+            return {
+                "error": f"Image and mask dimensions don't match. Image: {image_np.shape[:2]}, Mask: {mask_np.shape[:2]}"}
+
+        print(f"✅ Final image shape: {image_np.shape}")
+        print(f"✅ Final mask shape: {mask_np.shape}")
 
         # Prepare config
         config = InpaintRequest(
@@ -112,6 +149,7 @@ def handler(job):
         return {"output_image": result_b64}
 
     except Exception as e:
+        print(f"❌ Error in handler: {str(e)}")
         return {"error": str(e)}
 
 
