@@ -1,4 +1,25 @@
-import runpod
+import sys
+import os
+
+# Ensure proper Python path
+sys.path.insert(0, '/app')
+sys.path.insert(0, '/usr/local/lib/python3.10/site-packages')
+
+try:
+    import runpod
+    print("✅ RunPod imported successfully")
+except ImportError as e:
+    print(f"❌ RunPod import failed: {e}")
+    print(f"Python path: {sys.path}")
+    print(f"Installed packages location: {sys.executable}")
+    # Try alternative import locations
+    try:
+        sys.path.append('/usr/local/lib/python3.10/dist-packages')
+        import runpod
+        print("✅ RunPod imported from dist-packages")
+    except ImportError:
+        raise ImportError("Could not import runpod from any location")
+
 import base64
 from io import BytesIO
 from PIL import Image
@@ -90,4 +111,5 @@ def handler(job):
 
 
 # RunPod Serverless
-runpod.serverless.start({"handler": handler})
+if __name__ == "__main__":
+    runpod.serverless.start({"handler": handler})
