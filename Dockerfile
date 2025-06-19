@@ -22,17 +22,20 @@ RUN apt-get update && \
 COPY builder/requirements.txt .
 
 # --- Install all packages including RunPod in one go ---
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir --force-reinstall runpod>=1.6.0
+RUN pip install --no-cache-dir -r requirements.txt
 
 # --- Copy handler ---
 COPY src/handler.py .
 
-# --- Verify installations ---
+# --- Verify installations and imports ---
 RUN python -c "import runpod; print('✅ RunPod version:', runpod.__version__)" && \
     python -c "import torch; print('✅ PyTorch version:', torch.__version__)" && \
     python -c "import iopaint; print('✅ IOPaint imported')" && \
-    pip list | grep runpod
+    python -c "from iopaint.model.lama import LaMa; print('✅ LaMa imported')" && \
+    python -c "from iopaint.schema import InpaintRequest; print('✅ InpaintRequest imported')" && \
+    python -c "import iopaint.model.lama; print('✅ Available in lama module:', [x for x in dir(iopaint.model.lama) if not x.startswith('_')])" && \
+    python -c "import iopaint.model; print('✅ Available models:', [x for x in dir(iopaint.model) if not x.startswith('_')])" && \
+    pip list | grep -E "(runpod|iopaint|torch)"
 
 # --- Entrypoint for RunPod Serverless ---
 CMD ["python", "-u", "handler.py"]

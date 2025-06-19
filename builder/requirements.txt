@@ -1,4 +1,4 @@
-# PyTorch with CUDA support (install first)
+# PyTorch with CUDA support
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch==2.3.0
 torchvision==0.18.0
@@ -7,17 +7,12 @@ torchvision==0.18.0
 numpy
 scipy
 matplotlib
-einops
 
-# Fixed versions to match IOPaint requirements
-fastapi==0.108.0
-markupsafe==2.0.23
-websockets==11.0.3
+# AI/ML dependencies
+einops
 requests
 huggingface_hub==0.25.2
 
-# IOPaint (install after fixing dependencies)
+# Include IOPaint (install last to avoid conflicts)
 iopaint
-
-# RunPod (install last)
 runpod>=1.6.0
