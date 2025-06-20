@@ -46,8 +46,16 @@ def decode_base64_image(b64_string):
     return Image.open(BytesIO(base64.b64decode(b64_string))).convert("RGB")
 
 
-# Helper: encode PIL image to base64 PNG
 def encode_base64_image(image_np):
+    # Convert float to uint8
+    if image_np.dtype != np.uint8:
+        image_np = np.clip(image_np, 0, 1)
+        image_np = (image_np * 255).astype(np.uint8)
+
+    # Convert BGR to RGB if needed
+    if image_np.shape[-1] == 3:
+        image_np = image_np[..., ::-1]  # BGR → RGB
+
     image = Image.fromarray(image_np)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
