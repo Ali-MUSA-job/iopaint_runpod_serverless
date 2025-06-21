@@ -43,7 +43,7 @@ MODEL_REGISTRY = {
 DIFFUSERS_PIPELINE_REGISTRY = {
     "instruct_pix2pix": (StableDiffusionInstructPix2PixPipeline, "timbrooks/instruct-pix2pix"),
     "paint_by_example": (StableDiffusionInpaintPipeline, "Fantasy-Studio/Paint-by-Example"),
-    "power_paint": (StableDiffusionInpaintPipeline, "Sanster/PowerPaint_v2")
+    "power_paint": (StableDiffusionInpaintPipeline, "Sanster/PowerPaint-V1-stable-diffusion-inpainting")
 }
 
 # --------- Globals ---------
