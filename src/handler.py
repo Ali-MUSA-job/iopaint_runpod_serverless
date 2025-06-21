@@ -18,13 +18,11 @@ sys.path.insert(0, '/usr/local/lib/python3.10/site-packages')
 
 try:
     import runpod
-
     print("✅ RunPod imported successfully")
 except ImportError as e:
     print(f"❌ RunPod import failed: {e}")
     sys.path.append('/usr/local/lib/python3.10/dist-packages')
     import runpod
-
     print("✅ RunPod imported from dist-packages")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,69 +51,57 @@ loaded_models = {}
 current_model = None
 current_model_name = None
 
-
 # --------- Config Class for Attribute Access ---------
 class Config:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-
 def decode_base64_image(b64_string):
     return Image.open(BytesIO(base64.b64decode(b64_string))).convert("RGB")
 
-
 def encode_base64_image(image_np):
+    """
+    Fixed version combining the working parts from both handlers
+    """
     print(f"🔍 Encode input shape: {image_np.shape}, dtype: {image_np.dtype}")
     print(f"🔍 Encode input range: min={image_np.min()}, max={image_np.max()}")
-
-    # Handle different input formats
-    if image_np.dtype == np.float32 or image_np.dtype == np.float64:
-        # If values are in 0-1 range, scale to 0-255
-        if image_np.max() <= 1.0:
-            image_np = np.clip(image_np, 0, 1)
-            image_np = (image_np * 255).astype(np.uint8)
-        # If values are already in 0-255 range but float
-        else:
-            image_np = np.clip(image_np, 0, 255).astype(np.uint8)
-    elif image_np.dtype != np.uint8:
-        image_np = image_np.astype(np.uint8)
-
-    # Don't flip RGB channels - keep original format
-    # Remove this line: if image_np.shape[-1] == 3: image_np = image_np[..., ::-1]
-
+    
+    # Handle different input formats (from current handler - but simplified)
+    if image_np.dtype != np.uint8:
+        # Normalize to 0-1 range first, then scale to 0-255
+        if image_np.max() > 1.0:
+            image_np = image_np / image_np.max()  # Normalize to 0-1
+        image_np = np.clip(image_np, 0, 1)
+        image_np = (image_np * 255).astype(np.uint8)
+    
+    # CRITICAL: Restore the RGB channel flipping from old handler
+    if image_np.shape[-1] == 3:
+        image_np = image_np[..., ::-1]
+    
     print(f"🔍 Final processed shape: {image_np.shape}, dtype: {image_np.dtype}")
     print(f"🔍 Final processed range: min={image_np.min()}, max={image_np.max()}")
-
+    
     image = Image.fromarray(image_np)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode()
 
-
 def normalize_mask(mask_np):
+    """
+    Simplified mask processing closer to old handler
+    """
     print(f"🔍 Original mask shape: {mask_np.shape}, dtype: {mask_np.dtype}")
-    print(f"🔍 Original mask range: min={mask_np.min()}, max={mask_np.max()}")
-
+    
     mask_np = np.squeeze(mask_np)
     print(f"🔍 After squeeze: {mask_np.shape}")
-
-    # Handle 3-channel masks
+    
+    # Simple approach from old handler
     if mask_np.ndim == 3:
         mask_np = mask_np[:, :, 0]
-
-    # Ensure mask values are in correct range (0-255 for uint8)
-    if mask_np.dtype == np.uint8:
-        # Mask should be 0 for areas to keep, 255 for areas to inpaint
-        print(f"🔍 Mask unique values: {np.unique(mask_np)}")
-    else:
-        # Convert to uint8 if needed
-        mask_np = (mask_np * 255).astype(np.uint8)
-        print(f"🔍 Converted mask unique values: {np.unique(mask_np)}")
-
+    
     print(f"🔍 Final mask shape: {mask_np.shape}, dtype: {mask_np.dtype}")
     return mask_np
-
 
 def switch_model(requested_model):
     global current_model, current_model_name
@@ -149,7 +135,6 @@ def switch_model(requested_model):
     loaded_models[requested_model] = model
     current_model = model
     current_model_name = requested_model
-
 
 def handler(job):
     try:
@@ -198,59 +183,37 @@ def handler(job):
             ).images[0]
         else:
             print("🧪 Running local model...")
-            # Create config object with all expected attributes for local models
+            
+            # SIMPLIFIED CONFIG - Only essential parameters to avoid conflicts
             config = Config(
-                # Basic parameters
                 prompt=prompt,
-
-                # CRITICAL: These parameters can cause white/blank outputs
-                sd_keep_unmasked_area=job_input.get("sd_keep_unmasked_area", True),
-                # Should be True to preserve original
-                sd_match_histograms=job_input.get("sd_match_histograms", False),  # Can cause issues if True
-                sd_mask_blur=job_input.get("sd_mask_blur", 0),  # Try 0 first, then 11
-                sd_strength=job_input.get("sd_strength", 0.75),  # Try lower values like 0.75
-
-                # Stable Diffusion parameters
+                
+                # Basic SD parameters (safe defaults)
                 sd_steps=job_input.get("sd_steps", 50),
                 sd_guidance_scale=job_input.get("sd_guidance_scale", 7.5),
                 sd_seed=job_input.get("sd_seed", 42),
+                sd_strength=job_input.get("sd_strength", 0.75),  # Reduced from 1.0
                 sd_num_samples=job_input.get("sd_num_samples", 1),
-                sd_freeu=job_input.get("sd_freeu", False),
-                sd_freeu_config=job_input.get("sd_freeu_config", {}),
-                sd_lcm_lora=job_input.get("sd_lcm_lora", False),
-
-                # HD Strategy - IMPORTANT: Can cause issues with certain models
-                hd_strategy=job_input.get("hd_strategy", "Original"),  # Try "Original" first
-                hd_strategy_crop_margin=job_input.get("hd_strategy_crop_margin", 32),
-                hd_strategy_crop_trigger_size=job_input.get("hd_strategy_crop_trigger_size", 512),
-                hd_strategy_resize_limit=job_input.get("hd_strategy_resize_limit", 2048),
-
-                # Cropping parameters - Can cause blank output if misconfigured
-                use_croper=job_input.get("use_croper", False),  # Should be False unless needed
-                croper_x=job_input.get("croper_x", 0),
-                croper_y=job_input.get("croper_y", 0),
-                croper_height=job_input.get("croper_height", 512),
-                croper_width=job_input.get("croper_width", 512),
-
-                # Post-processing options - These can interfere with output
-                enable_interactive_seg=job_input.get("enable_interactive_seg", False),
-                interactive_seg_model=job_input.get("interactive_seg_model", "vit_b"),
-                enable_remove_bg=job_input.get("enable_remove_bg", False),
-                enable_anime_seg=job_input.get("enable_anime_seg", False),
-                enable_realesrgan=job_input.get("enable_realesrgan", False),
-                realesrgan_device=job_input.get("realesrgan_device", device.type),
-                realesrgan_model=job_input.get("realesrgan_model", "RealESRGAN_x4plus"),
-                enable_gfpgan=job_input.get("enable_gfpgan", False),
-                gfpgan_device=job_input.get("gfpgan_device", device.type),
-                enable_restoreformer=job_input.get("enable_restoreformer", False),
-                restoreformer_device=job_input.get("restoreformer_device", device.type)
+                
+                # CRITICAL: Conservative settings to prevent blank output
+                sd_keep_unmasked_area=job_input.get("sd_keep_unmasked_area", True),
+                sd_match_histograms=job_input.get("sd_match_histograms", False),
+                sd_mask_blur=job_input.get("sd_mask_blur", 0),  # Reduced from 11
+                
+                # Minimal HD strategy
+                hd_strategy=job_input.get("hd_strategy", "Original"),
+                
+                # Disable potentially problematic features
+                use_croper=False,
+                enable_interactive_seg=False,
+                enable_remove_bg=False,
+                enable_anime_seg=False,
+                enable_realesrgan=False,
+                enable_gfpgan=False,
+                enable_restoreformer=False,
+                sd_freeu=False,
+                sd_lcm_lora=False
             )
-
-            # print(f"🔧 Config - sd_keep_unmasked_area: {config.sd_keep_unmasked_area}")
-            # print(f"🔧 Config - sd_strength: {config.sd_strength}")
-            # print(f"🔧 Config - sd_mask_blur: {config.sd_mask_blur}")
-            # print(f"🔧 Config - hd_strategy: {config.hd_strategy}")
-            # print(f"🔧 Config - use_croper: {config.use_croper}")
 
             result = current_model(image_np, mask_np, config)
             print(f"🔍 Local model result shape: {result.shape}, dtype: {result.dtype}")
@@ -262,7 +225,6 @@ def handler(job):
     except Exception as e:
         print(f"❌ Handler error: {e}")
         return {"error": str(e)}
-
 
 # RunPod Serverless
 if __name__ == "__main__":
