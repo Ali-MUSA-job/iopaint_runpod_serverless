@@ -55,6 +55,13 @@ current_model = None
 current_model_name = None
 
 
+# --------- Config Class for Attribute Access ---------
+class Config:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 def decode_base64_image(b64_string):
     return Image.open(BytesIO(base64.b64decode(b64_string))).convert("RGB")
 
@@ -146,7 +153,7 @@ def handler(job):
             result = current_model(
                         image=image,
                         mask_image=mask,
-                        prompt=prompt if "instruct" in current_model_name else None,
+                        prompt=prompt or "",
                         example_image=example_image if "paint_by_example" in current_model_name else None,
                         guidance_scale=job_input.get("sd_guidance_scale", 7.5),
                         num_inference_steps=job_input.get("sd_steps", 50),
@@ -155,14 +162,15 @@ def handler(job):
                     ).images[0]
         else:
             print("🧪 Running local model...")
-            config = {
-                "prompt": prompt,
-                "paint_by_example_example_image": example_b64,
-                "sd_steps": job_input.get("sd_steps", 50),
-                "sd_guidance_scale": job_input.get("sd_guidance_scale", 7.5),
-                "sd_seed": job_input.get("sd_seed", 42),
-                "hd_strategy": "Original"
-            }
+            # Create config object with attribute access instead of dict
+            config = Config(
+                prompt=prompt,
+                paint_by_example_example_image=example_b64,
+                sd_steps=job_input.get("sd_steps", 50),
+                sd_guidance_scale=job_input.get("sd_guidance_scale", 7.5),
+                sd_seed=job_input.get("sd_seed", 42),
+                hd_strategy="Original"
+            )
             result = current_model(image_np, mask_np, config)
 
         result_b64 = encode_base64_image(result)
