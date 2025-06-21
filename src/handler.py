@@ -35,7 +35,6 @@ MODEL_REGISTRY = {
     "zits": ("iopaint.model.zits", "ZITS"),
     "mat": ("iopaint.model.mat", "MAT"),
     "fcf": ("iopaint.model.fcf", "FcF"),
-    "paint_by_example": ("iopaint.model.paint_by_example", "PaintByExample"),
     "mi_gan": ("iopaint.model.mi_gan", "MIGAN"),
     "manga": ("iopaint.model.manga", "Manga"),
     "ldm": ("iopaint.model.ldm", "LDM"),
