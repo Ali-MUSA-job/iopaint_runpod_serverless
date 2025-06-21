@@ -66,11 +66,27 @@ def decode_base64_image(b64_string):
 
 
 def encode_base64_image(image_np):
-    if image_np.dtype != np.uint8:
-        image_np = np.clip(image_np, 0, 1)
-        image_np = (image_np * 255).astype(np.uint8)
-    if image_np.shape[-1] == 3:
-        image_np = image_np[..., ::-1]
+    print(f"🔍 Encode input shape: {image_np.shape}, dtype: {image_np.dtype}")
+    print(f"🔍 Encode input range: min={image_np.min()}, max={image_np.max()}")
+
+    # Handle different input formats
+    if image_np.dtype == np.float32 or image_np.dtype == np.float64:
+        # If values are in 0-1 range, scale to 0-255
+        if image_np.max() <= 1.0:
+            image_np = np.clip(image_np, 0, 1)
+            image_np = (image_np * 255).astype(np.uint8)
+        # If values are already in 0-255 range but float
+        else:
+            image_np = np.clip(image_np, 0, 255).astype(np.uint8)
+    elif image_np.dtype != np.uint8:
+        image_np = image_np.astype(np.uint8)
+
+    # Don't flip RGB channels - keep original format
+    # Remove this line: if image_np.shape[-1] == 3: image_np = image_np[..., ::-1]
+
+    print(f"🔍 Final processed shape: {image_np.shape}, dtype: {image_np.dtype}")
+    print(f"🔍 Final processed range: min={image_np.min()}, max={image_np.max()}")
+
     image = Image.fromarray(image_np)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
@@ -78,10 +94,27 @@ def encode_base64_image(image_np):
 
 
 def normalize_mask(mask_np):
-    print(f"🔍 Original mask shape: {mask_np.shape}")
+    print(f"🔍 Original mask shape: {mask_np.shape}, dtype: {mask_np.dtype}")
+    print(f"🔍 Original mask range: min={mask_np.min()}, max={mask_np.max()}")
+
     mask_np = np.squeeze(mask_np)
     print(f"🔍 After squeeze: {mask_np.shape}")
-    return mask_np[:, :, 0] if mask_np.ndim == 3 else mask_np
+
+    # Handle 3-channel masks
+    if mask_np.ndim == 3:
+        mask_np = mask_np[:, :, 0]
+
+    # Ensure mask values are in correct range (0-255 for uint8)
+    if mask_np.dtype == np.uint8:
+        # Mask should be 0 for areas to keep, 255 for areas to inpaint
+        print(f"🔍 Mask unique values: {np.unique(mask_np)}")
+    else:
+        # Convert to uint8 if needed
+        mask_np = (mask_np * 255).astype(np.uint8)
+        print(f"🔍 Converted mask unique values: {np.unique(mask_np)}")
+
+    print(f"🔍 Final mask shape: {mask_np.shape}, dtype: {mask_np.dtype}")
+    return mask_np
 
 
 def switch_model(requested_model):
@@ -136,6 +169,10 @@ def handler(job):
         image_np = np.array(image)
         mask_np = normalize_mask(np.array(mask))
 
+        print(f"🔍 Input image shape: {image_np.shape}, dtype: {image_np.dtype}")
+        print(f"🔍 Input image range: min={image_np.min()}, max={image_np.max()}")
+        print(f"🔍 Input mask shape: {mask_np.shape}, dtype: {mask_np.dtype}")
+
         if image_np.shape[:2] != mask_np.shape[:2]:
             return {
                 "error": f"Image and mask size mismatch. Image: {image_np.shape[:2]}, Mask: {mask_np.shape[:2]}"
@@ -166,33 +203,36 @@ def handler(job):
                 # Basic parameters
                 prompt=prompt,
 
+                # CRITICAL: These parameters can cause white/blank outputs
+                sd_keep_unmasked_area=job_input.get("sd_keep_unmasked_area", True),
+                # Should be True to preserve original
+                sd_match_histograms=job_input.get("sd_match_histograms", False),  # Can cause issues if True
+                sd_mask_blur=job_input.get("sd_mask_blur", 0),  # Try 0 first, then 11
+                sd_strength=job_input.get("sd_strength", 0.75),  # Try lower values like 0.75
+
                 # Stable Diffusion parameters
                 sd_steps=job_input.get("sd_steps", 50),
                 sd_guidance_scale=job_input.get("sd_guidance_scale", 7.5),
                 sd_seed=job_input.get("sd_seed", 42),
-                sd_strength=job_input.get("sd_strength", 1.0),
-                sd_keep_unmasked_area=job_input.get("sd_keep_unmasked_area", True),
                 sd_num_samples=job_input.get("sd_num_samples", 1),
-                sd_match_histograms=job_input.get("sd_match_histograms", False),
-                sd_mask_blur=job_input.get("sd_mask_blur", 11),
                 sd_freeu=job_input.get("sd_freeu", False),
                 sd_freeu_config=job_input.get("sd_freeu_config", {}),
                 sd_lcm_lora=job_input.get("sd_lcm_lora", False),
 
-                # HD Strategy
-                hd_strategy=job_input.get("hd_strategy", "Original"),
+                # HD Strategy - IMPORTANT: Can cause issues with certain models
+                hd_strategy=job_input.get("hd_strategy", "Original"),  # Try "Original" first
                 hd_strategy_crop_margin=job_input.get("hd_strategy_crop_margin", 32),
                 hd_strategy_crop_trigger_size=job_input.get("hd_strategy_crop_trigger_size", 512),
                 hd_strategy_resize_limit=job_input.get("hd_strategy_resize_limit", 2048),
 
-                # Cropping parameters
-                use_croper=job_input.get("use_croper", False),
+                # Cropping parameters - Can cause blank output if misconfigured
+                use_croper=job_input.get("use_croper", False),  # Should be False unless needed
                 croper_x=job_input.get("croper_x", 0),
                 croper_y=job_input.get("croper_y", 0),
                 croper_height=job_input.get("croper_height", 512),
                 croper_width=job_input.get("croper_width", 512),
 
-                # Post-processing options
+                # Post-processing options - These can interfere with output
                 enable_interactive_seg=job_input.get("enable_interactive_seg", False),
                 interactive_seg_model=job_input.get("interactive_seg_model", "vit_b"),
                 enable_remove_bg=job_input.get("enable_remove_bg", False),
@@ -205,7 +245,16 @@ def handler(job):
                 enable_restoreformer=job_input.get("enable_restoreformer", False),
                 restoreformer_device=job_input.get("restoreformer_device", device.type)
             )
+
+            # print(f"🔧 Config - sd_keep_unmasked_area: {config.sd_keep_unmasked_area}")
+            # print(f"🔧 Config - sd_strength: {config.sd_strength}")
+            # print(f"🔧 Config - sd_mask_blur: {config.sd_mask_blur}")
+            # print(f"🔧 Config - hd_strategy: {config.hd_strategy}")
+            # print(f"🔧 Config - use_croper: {config.use_croper}")
+
             result = current_model(image_np, mask_np, config)
+            print(f"🔍 Local model result shape: {result.shape}, dtype: {result.dtype}")
+            print(f"🔍 Local model result range: min={result.min()}, max={result.max()}")
 
         result_b64 = encode_base64_image(result)
         return {"output_image": result_b64}
