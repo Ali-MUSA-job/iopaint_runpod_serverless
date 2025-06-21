@@ -18,13 +18,14 @@ sys.path.insert(0, '/usr/local/lib/python3.10/site-packages')
 
 try:
     import runpod
+
     print("✅ RunPod imported successfully")
 except ImportError as e:
     print(f"❌ RunPod import failed: {e}")
     sys.path.append('/usr/local/lib/python3.10/dist-packages')
     import runpod
-    print("✅ RunPod imported from dist-packages")
 
+    print("✅ RunPod imported from dist-packages")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -45,8 +46,7 @@ DIFFUSERS_PIPELINE_REGISTRY = {
     "instruct_pix2pix": (StableDiffusionInstructPix2PixPipeline, "timbrooks/instruct-pix2pix"),
     "paint_by_example": (StableDiffusionInpaintPipeline, "Fantasy-Studio/Paint-by-Example"),
     "power_paint": (StableDiffusionInpaintPipeline, "Sanster/PowerPaint-V1-stable-diffusion-inpainting")
-    }
-
+}
 
 # --------- Globals ---------
 loaded_models = {}
@@ -150,25 +150,60 @@ def handler(job):
             print("🧪 Running diffusers pipeline...")
             generator = torch.manual_seed(job_input.get("sd_seed", 42))
             result = current_model(
-                        image=image,
-                        mask_image=mask,
-                        prompt=prompt or "",
-                        example_image=example_image if "paint_by_example" in current_model_name else None,
-                        guidance_scale=job_input.get("sd_guidance_scale", 7.5),
-                        num_inference_steps=job_input.get("sd_steps", 50),
-                        generator=generator,
-                        output_type="np.array"
-                    ).images[0]
+                image=image,
+                mask_image=mask,
+                prompt=prompt or "",
+                example_image=example_image if "paint_by_example" in current_model_name else None,
+                guidance_scale=job_input.get("sd_guidance_scale", 7.5),
+                num_inference_steps=job_input.get("sd_steps", 50),
+                generator=generator,
+                output_type="np.array"
+            ).images[0]
         else:
             print("🧪 Running local model...")
-            # Create config object with attribute access instead of dict
+            # Create config object with all expected attributes for local models
             config = Config(
+                # Basic parameters
                 prompt=prompt,
-                paint_by_example_example_image=example_b64,
+
+                # Stable Diffusion parameters
                 sd_steps=job_input.get("sd_steps", 50),
                 sd_guidance_scale=job_input.get("sd_guidance_scale", 7.5),
                 sd_seed=job_input.get("sd_seed", 42),
-                hd_strategy="Original"
+                sd_strength=job_input.get("sd_strength", 1.0),
+                sd_keep_unmasked_area=job_input.get("sd_keep_unmasked_area", True),
+                sd_num_samples=job_input.get("sd_num_samples", 1),
+                sd_match_histograms=job_input.get("sd_match_histograms", False),
+                sd_mask_blur=job_input.get("sd_mask_blur", 11),
+                sd_freeu=job_input.get("sd_freeu", False),
+                sd_freeu_config=job_input.get("sd_freeu_config", {}),
+                sd_lcm_lora=job_input.get("sd_lcm_lora", False),
+
+                # HD Strategy
+                hd_strategy=job_input.get("hd_strategy", "Original"),
+                hd_strategy_crop_margin=job_input.get("hd_strategy_crop_margin", 32),
+                hd_strategy_crop_trigger_size=job_input.get("hd_strategy_crop_trigger_size", 512),
+                hd_strategy_resize_limit=job_input.get("hd_strategy_resize_limit", 2048),
+
+                # Cropping parameters
+                use_croper=job_input.get("use_croper", False),
+                croper_x=job_input.get("croper_x", 0),
+                croper_y=job_input.get("croper_y", 0),
+                croper_height=job_input.get("croper_height", 512),
+                croper_width=job_input.get("croper_width", 512),
+
+                # Post-processing options
+                enable_interactive_seg=job_input.get("enable_interactive_seg", False),
+                interactive_seg_model=job_input.get("interactive_seg_model", "vit_b"),
+                enable_remove_bg=job_input.get("enable_remove_bg", False),
+                enable_anime_seg=job_input.get("enable_anime_seg", False),
+                enable_realesrgan=job_input.get("enable_realesrgan", False),
+                realesrgan_device=job_input.get("realesrgan_device", device.type),
+                realesrgan_model=job_input.get("realesrgan_model", "RealESRGAN_x4plus"),
+                enable_gfpgan=job_input.get("enable_gfpgan", False),
+                gfpgan_device=job_input.get("gfpgan_device", device.type),
+                enable_restoreformer=job_input.get("enable_restoreformer", False),
+                restoreformer_device=job_input.get("restoreformer_device", device.type)
             )
             result = current_model(image_np, mask_np, config)
 
